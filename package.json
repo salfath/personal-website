@@ -1,0 +1,20 @@
+{
+  "name": "personal-website-agus-barlianto",
+  "version": "1.0.0",
+  "description": "Personal Website untuk Agus Barlianto",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server -p 3030 -o",
+    "dev": "http-server -p 3030 -o"
+  },
+  "keywords": [
+    "personal-website",
+    "portfolio"
+  ],
+  "author": "Agus Barlianto",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
+
