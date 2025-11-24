@@ -23,11 +23,37 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
+      - name: Check server connection and permissions
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "echo 'Checking server connection...' && \
+             echo 'Current user: \$(whoami)' && \
+             echo 'Home directory: \$HOME' && \
+             echo 'Deploy path: ${{ secrets.DEPLOY_PATH }}' && \
+             if [ ! -d '${{ secrets.DEPLOY_PATH }}' ]; then \
+               echo '⚠️  Warning: Deploy path does not exist. Attempting to create parent directory...'; \
+               mkdir -p '${{ secrets.DEPLOY_PATH }}' 2>&1 || echo '❌ Cannot create deploy path. Please create it manually on server.'; \
+             fi && \
+             if [ -d '${{ secrets.DEPLOY_PATH }}' ]; then \
+               echo '✅ Deploy path exists'; \
+               ls -ld '${{ secrets.DEPLOY_PATH }}' || true; \
+             fi"
+
       - name: Create deployment directory on server
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
-            "mkdir -p ${{ secrets.DEPLOY_PATH }}/personal-website && \
-             mkdir -p ${{ secrets.DEPLOY_PATH }}/personal-website/backup"
+            "if [ -w '${{ secrets.DEPLOY_PATH }}' ] || mkdir -p '${{ secrets.DEPLOY_PATH }}' 2>/dev/null; then \
+               mkdir -p '${{ secrets.DEPLOY_PATH }}/personal-website' && \
+               mkdir -p '${{ secrets.DEPLOY_PATH }}/personal-website/backup' && \
+               echo '✅ Directories created successfully'; \
+             else \
+               echo '❌ Error: Permission denied. Please ensure:' && \
+               echo '   1. DEPLOY_PATH is correct (e.g., /var/www/html, /home/user/www)' && \
+               echo '   2. SSH user has write permission to DEPLOY_PATH' && \
+               echo '   3. Or create the directory manually: sudo mkdir -p ${{ secrets.DEPLOY_PATH }}/personal-website' && \
+               echo '   4. Set ownership: sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} ${{ secrets.DEPLOY_PATH }}/personal-website' && \
+               exit 1; \
+             fi"
 
       - name: Backup existing files
         run: |

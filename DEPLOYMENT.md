@@ -73,8 +73,20 @@ Untuk menggunakan GitHub Actions, Anda perlu mengatur secrets berikut di reposit
 
 #### 4. `DEPLOY_PATH`
 - **Deskripsi**: Path direktori di server tempat file akan di-deploy
-- **Contoh**: `/var/www/html`, `/home/user/www`, `/opt/websites`
-- **Catatan**: Pastikan direktori sudah ada atau user memiliki permission untuk membuatnya
+- **Contoh yang benar**:
+  - `/var/www/html` - Untuk web server standar (perlu sudo atau permission khusus)
+  - `/home/ubuntu/www` - Untuk user ubuntu (ganti dengan SSH_USER Anda)
+  - `/home/user/www` - Untuk user biasa
+  - `/opt/websites` - Alternatif lokasi
+- **Contoh yang SALAH**:
+  - `/` - Root directory (tidak boleh)
+  - `/personal-website` - Tanpa parent directory
+  - `~/www` - Tilde tidak bekerja di GitHub Actions
+- **Cara setup**:
+  1. Login ke server: `ssh user@server_ip`
+  2. Buat direktori: `mkdir -p ~/www` (atau path lain yang Anda pilih)
+  3. Set DEPLOY_PATH di GitHub Secrets: `/home/username/www` (ganti username dengan SSH_USER)
+  4. Pastikan user memiliki write permission ke direktori tersebut
 
 ### Alternatif: Menggunakan Password (Tidak Recommended)
 
@@ -114,11 +126,50 @@ sudo systemctl enable apache2
 
 ### 2. Buat Direktori Deployment
 
+**Opsi 1: Menggunakan direktori di home user (Recommended - Lebih Mudah)**
+
 ```bash
-# Contoh untuk Nginx
+# Login ke server
+ssh user@server_ip
+
+# Buat direktori di home user (tidak perlu sudo)
+mkdir -p ~/www/personal-website
+mkdir -p ~/www/personal-website/backup
+
+# Set DEPLOY_PATH di GitHub Secrets menjadi:
+# /home/username/www (ganti username dengan SSH_USER Anda)
+# Contoh: Jika SSH_USER adalah "ubuntu", maka DEPLOY_PATH = /home/ubuntu/www
+```
+
+**Opsi 2: Menggunakan /var/www/html (Perlu Permission Khusus)**
+
+```bash
+# Login ke server sebagai root atau user dengan sudo
+ssh user@server_ip
+
+# Buat direktori
 sudo mkdir -p /var/www/html/personal-website
-sudo chown -R $USER:$USER /var/www/html/personal-website
+sudo mkdir -p /var/www/html/personal-website/backup
+
+# Set ownership ke SSH_USER (ganti ubuntu dengan SSH_USER Anda)
+sudo chown -R ubuntu:ubuntu /var/www/html/personal-website
 sudo chmod -R 755 /var/www/html/personal-website
+
+# Atau jika menggunakan www-data group:
+sudo chown -R ubuntu:www-data /var/www/html/personal-website
+sudo chmod -R 775 /var/www/html/personal-website
+
+# Set DEPLOY_PATH di GitHub Secrets menjadi: /var/www/html
+```
+
+**Verifikasi Permission:**
+
+```bash
+# Test apakah user bisa menulis
+touch ~/www/personal-website/test.txt
+rm ~/www/personal-website/test.txt
+
+# Jika berhasil, permission sudah benar
 ```
 
 ### 3. Konfigurasi Web Server
@@ -231,11 +282,63 @@ rsync -avz --delete \
 
 ### Error: Permission Denied
 
-**Solusi**: Pastikan SSH user memiliki permission untuk menulis di direktori deployment
-```bash
-sudo chown -R $SSH_USER:$SSH_USER /var/www/html/personal-website
-sudo chmod -R 755 /var/www/html/personal-website
-```
+**Penyebab**: SSH user tidak memiliki permission untuk membuat/menulis di direktori deployment.
+
+**Solusi Lengkap**:
+
+1. **Pastikan DEPLOY_PATH benar dan ada:**
+   ```bash
+   # Contoh DEPLOY_PATH yang benar:
+   # /var/www/html
+   # /home/user/www
+   # /opt/websites
+   
+   # Jangan gunakan:
+   # / (root directory)
+   # /personal-website (tanpa parent directory)
+   ```
+
+2. **Buat direktori deployment di server (jika belum ada):**
+   ```bash
+   # Login ke server
+   ssh user@server_ip
+   
+   # Buat direktori (ganti dengan DEPLOY_PATH Anda)
+   sudo mkdir -p /var/www/html/personal-website
+   sudo mkdir -p /var/www/html/personal-website/backup
+   ```
+
+3. **Set ownership dan permission:**
+   ```bash
+   # Ganti SSH_USER dengan username yang digunakan di GitHub Secrets
+   # Ganti path dengan DEPLOY_PATH Anda
+   sudo chown -R $SSH_USER:$SSH_USER /var/www/html/personal-website
+   sudo chmod -R 755 /var/www/html/personal-website
+   ```
+
+4. **Atau jika menggunakan direktori di home user:**
+   ```bash
+   # Gunakan direktori di home user (tidak perlu sudo)
+   mkdir -p ~/www/personal-website
+   mkdir -p ~/www/personal-website/backup
+   
+   # Set DEPLOY_PATH di GitHub Secrets menjadi:
+   # /home/username/www (ganti username dengan SSH_USER Anda)
+   ```
+
+5. **Verifikasi permission:**
+   ```bash
+   # Test apakah user bisa menulis
+   touch /var/www/html/personal-website/test.txt
+   rm /var/www/html/personal-website/test.txt
+   
+   # Jika error, berarti permission belum benar
+   ```
+
+**Catatan Penting**:
+- Jika menggunakan `/var/www/html`, biasanya memerlukan `sudo` atau user harus dalam group `www-data`
+- Lebih mudah menggunakan direktori di home user: `~/www` atau `/home/user/www`
+- Pastikan DEPLOY_PATH di GitHub Secrets sesuai dengan path yang dibuat di server
 
 ### Error: Host Key Verification Failed
 
