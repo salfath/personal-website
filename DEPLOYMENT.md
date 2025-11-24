@@ -8,6 +8,42 @@ Dokumen ini menjelaskan cara setup CI/CD menggunakan GitHub Actions untuk deploy
 2. Server dengan akses SSH tersedia
 3. SSH key atau password untuk akses server
 
+## Quick Start (Setup Cepat)
+
+**Langkah 1: Setup Server**
+```bash
+# Login ke server
+ssh user@server_ip
+
+# Buat direktori deployment (pilih salah satu)
+
+# Opsi A - Home directory (Paling Mudah):
+mkdir -p ~/www
+# Catat path lengkap: /home/username/www (ganti username dengan SSH_USER Anda)
+
+# Opsi B - /var/www/html:
+sudo mkdir -p /var/www/html/personal-website
+sudo chown -R $USER:$USER /var/www/html/personal-website
+# Catat path: /var/www/html
+```
+
+**Langkah 2: Setup GitHub Secrets**
+1. Buka GitHub → Repository → Settings → Secrets and variables → Actions
+2. Tambahkan secrets berikut:
+   - `SERVER_IP` = IP server Anda
+   - `SSH_USER` = Username SSH (contoh: `ubuntu`, `root`)
+   - `SSH_PRIVATE_KEY` = Private SSH key (lihat cara membuat di bawah)
+   - `DEPLOY_PATH` = Path dari Langkah 1 (contoh: `/home/ubuntu/www` atau `/var/www/html`)
+
+**Langkah 3: Push ke Repository**
+```bash
+git push origin main
+```
+
+Deployment akan otomatis berjalan! Lihat status di tab **Actions** di GitHub.
+
+---
+
 ## Setup GitHub Secrets
 
 Untuk menggunakan GitHub Actions, Anda perlu mengatur secrets berikut di repository GitHub:
@@ -125,6 +161,19 @@ sudo systemctl enable apache2
 ```
 
 ### 2. Buat Direktori Deployment
+
+**Cara Otomatis (Menggunakan Script Helper):**
+
+```bash
+# Upload script ke server atau clone repository
+scp setup-server.sh user@server_ip:~/
+ssh user@server_ip
+chmod +x setup-server.sh
+./setup-server.sh
+# Script akan memandu Anda melalui proses setup
+```
+
+**Cara Manual:**
 
 **Opsi 1: Menggunakan direktori di home user (Recommended - Lebih Mudah)**
 

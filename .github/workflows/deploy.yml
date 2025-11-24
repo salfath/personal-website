@@ -26,32 +26,71 @@ jobs:
       - name: Check server connection and permissions
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
-            "echo 'Checking server connection...' && \
+            "echo '=== Server Connection Check ===' && \
              echo 'Current user: \$(whoami)' && \
              echo 'Home directory: \$HOME' && \
-             echo 'Deploy path: ${{ secrets.DEPLOY_PATH }}' && \
-             if [ ! -d '${{ secrets.DEPLOY_PATH }}' ]; then \
-               echo '⚠️  Warning: Deploy path does not exist. Attempting to create parent directory...'; \
-               mkdir -p '${{ secrets.DEPLOY_PATH }}' 2>&1 || echo '❌ Cannot create deploy path. Please create it manually on server.'; \
+             echo 'Deploy path from secret: ${{ secrets.DEPLOY_PATH }}' && \
+             echo '' && \
+             if [ '${{ secrets.DEPLOY_PATH }}' = '/' ] || [ -z '${{ secrets.DEPLOY_PATH }}' ]; then \
+               echo '❌ ERROR: DEPLOY_PATH tidak boleh kosong atau root (/).' && \
+               echo 'Contoh DEPLOY_PATH yang benar:' && \
+               echo '  - /home/\$(whoami)/www' && \
+               echo '  - /var/www/html' && \
+               echo '  - /opt/websites' && \
+               exit 1; \
              fi && \
+             echo 'Checking if DEPLOY_PATH exists...' && \
+             if [ ! -d '${{ secrets.DEPLOY_PATH }}' ]; then \
+               echo '⚠️  Warning: DEPLOY_PATH does not exist: ${{ secrets.DEPLOY_PATH }}' && \
+               echo 'Attempting to create...' && \
+               mkdir -p '${{ secrets.DEPLOY_PATH }}' 2>&1 || { \
+                 echo '❌ Cannot create DEPLOY_PATH. Please run setup on server:' && \
+                 echo '   ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}' && \
+                 echo '   mkdir -p ~/www' && \
+                 echo '   # Then set DEPLOY_PATH in GitHub Secrets to: /home/${{ secrets.SSH_USER }}/www'; \
+                 exit 1; \
+               }; \
+             fi && \
+             echo 'Checking write permission...' && \
              if [ -d '${{ secrets.DEPLOY_PATH }}' ]; then \
-               echo '✅ Deploy path exists'; \
-               ls -ld '${{ secrets.DEPLOY_PATH }}' || true; \
+               echo '✅ DEPLOY_PATH exists' && \
+               ls -ld '${{ secrets.DEPLOY_PATH }}' && \
+               if [ -w '${{ secrets.DEPLOY_PATH }}' ]; then \
+                 echo '✅ Write permission OK'; \
+               else \
+                 echo '❌ No write permission to DEPLOY_PATH' && \
+                 echo 'Fix with: chmod 755 ${{ secrets.DEPLOY_PATH }}' && \
+                 exit 1; \
+               fi; \
              fi"
 
       - name: Create deployment directory on server
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
-            "if [ -w '${{ secrets.DEPLOY_PATH }}' ] || mkdir -p '${{ secrets.DEPLOY_PATH }}' 2>/dev/null; then \
+            "echo '=== Creating deployment directories ===' && \
+             if [ -w '${{ secrets.DEPLOY_PATH }}' ]; then \
                mkdir -p '${{ secrets.DEPLOY_PATH }}/personal-website' && \
                mkdir -p '${{ secrets.DEPLOY_PATH }}/personal-website/backup' && \
-               echo '✅ Directories created successfully'; \
+               echo '✅ Directories created successfully at: ${{ secrets.DEPLOY_PATH }}/personal-website'; \
              else \
-               echo '❌ Error: Permission denied. Please ensure:' && \
-               echo '   1. DEPLOY_PATH is correct (e.g., /var/www/html, /home/user/www)' && \
-               echo '   2. SSH user has write permission to DEPLOY_PATH' && \
-               echo '   3. Or create the directory manually: sudo mkdir -p ${{ secrets.DEPLOY_PATH }}/personal-website' && \
-               echo '   4. Set ownership: sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} ${{ secrets.DEPLOY_PATH }}/personal-website' && \
+               echo '❌ ERROR: Permission denied!' && \
+               echo '' && \
+               echo 'SOLUSI:' && \
+               echo '1. Login ke server:' && \
+               echo '   ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}' && \
+               echo '' && \
+               echo '2. Buat direktori (pilih salah satu):' && \
+               echo '   # Opsi A - Home directory (Recommended):' && \
+               echo '   mkdir -p ~/www' && \
+               echo '   # Set DEPLOY_PATH di GitHub Secrets = /home/${{ secrets.SSH_USER }}/www' && \
+               echo '' && \
+               echo '   # Opsi B - /var/www/html:' && \
+               echo '   sudo mkdir -p /var/www/html/personal-website' && \
+               echo '   sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} /var/www/html/personal-website' && \
+               echo '   # Set DEPLOY_PATH di GitHub Secrets = /var/www/html' && \
+               echo '' && \
+               echo '3. Verifikasi:' && \
+               echo '   touch ~/www/.test && rm ~/www/.test  # atau path yang Anda pilih' && \
                exit 1; \
              fi"
 
