@@ -17,11 +17,16 @@ Website personal modern dan responsif untuk Agus Barlianto. Dibangun dengan HTML
 ```
 personal-website/
 │
-├── index.html          # Halaman utama
-├── styles.css          # Styling dan layout
-├── script.js           # JavaScript untuk interaktivitas
-├── package.json        # Konfigurasi Node.js
-└── README.md          # Dokumentasi proyek
+├── .github/
+│   └── workflows/
+│       └── deploy.yml      # GitHub Actions CI/CD workflow
+├── index.html              # Halaman utama
+├── styles.css              # Styling dan layout
+├── script.js               # JavaScript untuk interaktivitas
+├── package.json            # Konfigurasi Node.js
+├── deploy.sh               # Script untuk manual deployment
+├── README.md               # Dokumentasi proyek
+└── DEPLOYMENT.md           # Panduan deployment lengkap
 ```
 
 ## Bagian Website
@@ -123,12 +128,50 @@ Website ini kompatibel dengan browser modern:
 - Safari (latest)
 - Edge (latest)
 
+## CI/CD Deployment
+
+Website ini dilengkapi dengan GitHub Actions untuk deployment otomatis ke server.
+
+### Setup GitHub Secrets
+
+Untuk mengaktifkan CI/CD, Anda perlu mengatur secrets berikut di GitHub repository:
+
+1. **SERVER_IP** - IP address atau hostname server
+2. **SSH_USER** - Username untuk SSH login
+3. **SSH_PRIVATE_KEY** - Private SSH key untuk autentikasi
+4. **DEPLOY_PATH** - Path direktori deployment di server (contoh: `/var/www/html`)
+
+### Cara Setup
+
+1. Buka repository GitHub → **Settings** → **Secrets and variables** → **Actions**
+2. Klik **New repository secret** dan tambahkan setiap secret di atas
+3. Push ke branch `main` atau `master` untuk trigger deployment otomatis
+
+**📖 Untuk panduan lengkap, lihat [DEPLOYMENT.md](DEPLOYMENT.md)**
+
+### Manual Deployment
+
+Jika ingin melakukan deployment manual:
+
+```bash
+# Setup environment variables
+export SERVER_IP=your_server_ip
+export SSH_USER=your_ssh_user
+export DEPLOY_PATH=/var/www/html
+export SSH_PRIVATE_KEY="$(cat ~/.ssh/your_key)"
+
+# Run deployment script
+chmod +x deploy.sh
+./deploy.sh
+```
+
 ## Teknologi yang Digunakan
 
 - HTML5
 - CSS3 (dengan CSS Variables dan Grid/Flexbox)
 - JavaScript (Vanilla JS)
 - Google Fonts (Inter)
+- GitHub Actions (CI/CD)
 
 ## Lisensi
 

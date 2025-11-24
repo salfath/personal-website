@@ -5,6 +5,10 @@ node_modules/
 *.log
 npm-debug.log*
 
+# Environment variables
+.env
+.env.local
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -14,4 +18,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Deployment
+*.pem
+deploy_key
 

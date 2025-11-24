@@ -1,0 +1,68 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Website to Server
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Create deployment directory on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "mkdir -p ${{ secrets.DEPLOY_PATH }}/personal-website && \
+             mkdir -p ${{ secrets.DEPLOY_PATH }}/personal-website/backup"
+
+      - name: Backup existing files
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "if [ -d '${{ secrets.DEPLOY_PATH }}/personal-website' ]; then \
+               TIMESTAMP=\$(date +%Y%m%d_%H%M%S); \
+               cp -r '${{ secrets.DEPLOY_PATH }}/personal-website'/* '${{ secrets.DEPLOY_PATH }}/personal-website/backup/\$TIMESTAMP/' 2>/dev/null || true; \
+             fi"
+
+      - name: Deploy files to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='.gitignore' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/personal-website/
+
+      - name: Verify deployment
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "if [ -f '${{ secrets.DEPLOY_PATH }}/personal-website/index.html' ]; then \
+               echo '✅ Deployment successful!'; \
+               echo 'Files deployed to: ${{ secrets.DEPLOY_PATH }}/personal-website/'; \
+               ls -la '${{ secrets.DEPLOY_PATH }}/personal-website/'; \
+             else \
+               echo '❌ Deployment failed - index.html not found'; \
+               exit 1; \
+             fi"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+
